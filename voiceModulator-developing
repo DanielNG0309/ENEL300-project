@@ -1,0 +1,260 @@
+/*
+ * File:   ENEL300cleaned.c
+ * Author: monsi
+ *
+ * Created on April 26, 2022, 6:08 AM
+ */
+
+
+#include <avr/io.h>
+#include <util/delay.h>
+//Define the length of the buffer (this affects delay time)
+#define LENGTH 4096
+int buffer[ LENGTH ];
+double tremoloBuffer[ LENGTH/4 ];
+//define read index and write index for the buffer
+int readIndex, writeIndex;
+//Needed for non-integer indexing (pitch shift)
+float fakeIndex=0;
+
+//Read data from the buffer
+//samFactor can be set to be different than 1 to read repeated samples or
+//skip reading some samples
+int delayLineReadNext( int x , float samFactor) {
+    int ret = buffer[readIndex];
+    fakeIndex=fakeIndex+samFactor;
+    readIndex=fakeIndex;
+    if( readIndex >= LENGTH )
+        readIndex = fakeIndex = 0;
+    return ret;
+}
+
+//Write data into the buffer
+void delayLineWriteNext( int x ) {
+    buffer[ writeIndex ] = x;
+    writeIndex++;
+    if( writeIndex >= LENGTH )
+        writeIndex = 0;
+}
+
+//REQUIRES: data input x and feedback gain g
+//PROMISES: return delayed data output with feedback gain = g
+int echo( int x, float g) {
+    int data;
+    delayLineWriteNext(x);
+    data=x + g * delayLineReadNext( x,1 );
+    return data;
+}
+
+//REQUIRES: data input and a clip value cutoff
+//PROMISES: return distorted output with the clipped value at
+// max-cutoff and min+cutoff
+int distortion(int data, int cutoff){
+    int min=225;
+    int max=512;
+    if (data > (max-cutoff)){
+        data = max-cutoff;
+    }
+    if (data<(min+cutoff)){
+        data=min+cutoff;
+    }
+    
+    data=data<<6;
+    return data;
+}
+
+//REQUIRES: 
+//data input and an appropriate sample factor to control pitch
+//PROMISES:
+//sample factor is used to control the pitch shift
+//i.e sample factor = 1 will keep the same pitch, 2 will increase the pitch
+// by one octave and 0.5 will decrease the pitch by one octave
+int pitchShift(int data, float samFactor){
+    delayLineWriteNext(data);
+    delayLineReadNext(data,samFactor);
+    return data;
+}
+
+//Set up the indexes depending on the mode chosen
+void indexSetUp(int mode){
+    if(mode==3){
+        readIndex=0;
+        writeIndex=LENGTH-1;
+    }
+    else{
+        readIndex=0;
+        writeIndex=0;
+    }
+}
+
+//Clear the buffer content to all 0
+void clearBuffer(){
+    for(int i=0;i<LENGTH;i++){
+        buffer[i]=0;
+    }
+}
+
+//Check which button is on and turn on the LED indicator
+int buttonCheck(){
+    int ret=0;
+    if (~PORTA.IN & 0b00100000){ //If Button connected to PA5 is pressed
+            _delay_ms(100); //Wait 0.1 seconds
+            if (~PORTA.IN & 0b00100000){ //If button connected to PA5 is still pressed
+
+                PORTC.OUT |= 0b00001000; //Turns PC3 on
+                PORTC.OUT &= 0b11111000; //Turns PC0, PC1, PC2 off
+                ret=1;
+            }
+        }
+        if (~PORTA.IN & 0b00010000){ //If Button connected to PA4 is pressed
+            _delay_ms(100); //Wait 0.1 seconds
+            if (~PORTA.IN & 0b00010000){ //If button connected to PA4 is still pressed
+
+                PORTC.OUT |= 0b00000100; //Turns PC2 on
+                PORTC.OUT &= 0b11110100; //Turns PC0, PC1, PC3 off
+                ret=2;
+            }
+        }
+        if (~PORTA.IN & 0b00001000){
+            _delay_ms(100);
+            if (~PORTA.IN & 0b00001000){
+
+                PORTC.OUT |= 0b00000010; //Turns PC1 on
+                PORTC.OUT &= 0b11110010; //Turns PC0, PC2 and PC3 off
+                ret=3;
+            }
+        }
+        if (~PORTA.IN & 0b00000100){
+            _delay_ms(100);
+            if (~PORTA.IN & 0b0000100){
+
+                PORTC.OUT |= 0b00000001; //Turns PC0 on
+                PORTC.OUT &= 0b11110001; //Turns PC1, PC2 and PC3 off
+                ret=4;
+            }
+        }
+    return ret;
+}
+
+void tremoloBufferInit(int ratio){
+    double x=0;
+    double increment = 1/(LENGTH/(ratio*2));
+
+    for(int j=0;j<LENGTH/(ratio*2);j++){
+        tremoloBuffer[j]=x+increment;
+    }
+    for(int j=LENGTH/(ratio*2);j<LENGTH/ratio;j++){
+        tremoloBuffer[j]=x-increment;
+    }
+    
+}
+
+int tremolo(int data, int ratio){
+    data=data*tremoloBuffer[readIndex];
+    readIndex++;
+    if( readIndex >= LENGTH/ratio )
+        readIndex=0;
+    return data;
+}
+
+
+int main(void) {
+    
+    clearBuffer();
+    
+    // Enable global interrupts.
+    SREG = 0b10000000;
+    
+    // Set the ADC reference level to VDD.
+    VREF.ADC0REF = 0b10000101;
+    
+    // Enable the ADC interrupt.
+    ADC0.INTCTRL = 0b00000001;
+    
+    // Select PD2 (AIN2) as the ADC input.
+    ADC0.MUXPOS = 0x02;
+
+    // Select minimum clock divide.
+    ADC0.CTRLC = 0x00;
+    
+    // Select single ended mode, 10 bit resolution and free-running modes.
+    ADC0.CTRLA = 0b00000111;
+    
+    // Start conversion.
+    ADC0.COMMAND = 0x01;
+    
+    // Set the DAC reference level to VDD.
+    VREF.DAC0REF = 0b10000101;
+    
+    //Enable the DAC
+    DAC0.CTRLA = 0b01000001;
+    
+    //Set needed variables
+    int data = 0; 
+    unsigned int mode=0;
+    float samFactor;
+    
+    //Configure I/O pins
+    PORTA.DIRCLR = 0b00111100;
+    PORTC.DIRSET = 0b00001111;
+    
+    while (1) {
+        
+        //Shift result got from ADC to fit the DAC input
+        data = ADC0.RES << 6;
+        
+        //Check which button is on and choose the correct mode
+        switch(buttonCheck()){
+            case 1:
+                mode=1;
+                clearBuffer();
+                tremoloBufferInit(4);
+                indexSetUp(mode);
+                break;
+            case 2:
+                mode = 2;
+                clearBuffer();
+                indexSetUp(mode);
+                break;
+            case 3:
+                mode = 3;
+                clearBuffer();
+                indexSetUp(mode);
+                break;
+            case 4:
+                mode = 4;
+                clearBuffer();
+                indexSetUp(mode);
+                break;
+            default:
+                mode=0;
+        }
+        
+        switch (mode){
+            // Pass-through mode
+            case 1:
+                DAC0.DATA = tremolo(data,4);
+                break;
+            //Pitched down mode
+            case 2:
+                samFactor=0.8;
+                DAC0.DATA = pitchShift(data, samFactor);
+                break;
+            //Echo mode
+            case 3:
+                DAC0.DATA=echo(data,0.8);
+                break;
+            //Pitched up mode
+            case 4:
+                samFactor=1.5;
+                DAC0.DATA = pitchShift(data, samFactor);
+                break;
+            //Default as pass-through
+            default:
+                DAC0.DATA = data;
+                
+                     
+        }
+        
+    }
+}
