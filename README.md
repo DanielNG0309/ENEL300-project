@@ -3,6 +3,9 @@ ENEL300-Winter2022
 
 FONIMAKS
 
+![image](https://user-images.githubusercontent.com/104455551/165433070-6fb53f18-1e90-4760-b64c-924918d821f7.png)
+
+
 CAUTION: 
 
 There are 2 files: voiceModulator-current is the current version of the FONIMAKS software while the voiceModulator-developing is the software file under development and has not been thoroughly tested. Please use the first file for all general uses.
