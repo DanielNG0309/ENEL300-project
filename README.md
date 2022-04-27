@@ -38,7 +38,7 @@ For questions related to distortion, please go to page 500
 
 ### CONTRIBUTORS
 
-Duc Nguyen
+Daniel Nguyen
 
 Alex Shepherd
 
