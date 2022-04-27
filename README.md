@@ -21,7 +21,7 @@ The FONIMAKS software is developed for AVR128DB28 chip with XC8 compiler, other 
 Adjust the cutoff variable to change the distortion intensity. The range of this cutoff is from 225 to 512, anything outside this range will break the code. This max and min value is already tested for normal human speech, if you wish to change this range, please refer to the datasheet below for more information.
 
 ##### Delay: 
-Adjust the LENGTH variable to adjust the delay time. Larger values will yield a bigger time delay. The maximum of this variable is 9000, anything more than that will exceed the memory capacity of the AVR (this value might decrease as we add more effects into the software so please stay updated with the newest infomation)
+Adjust the LENGTH variable to adjust the delay time. Larger values will yield a bigger time delay. The maximum of this variable is 9000, anything more than that will exceed the memory capacity of the AVR (this value might decrease as we add more effects into the software so please stay updated with the newest information)
 If you wish to set the delay time to an exact value, please refer to the datasheet below
 
 ##### Pitch Shift: 
@@ -48,5 +48,5 @@ Waleed Chaudhary
 
 
 
-### SPECIAL THANKS to the Electrical Engineering ILS proffesors and TAs team at the Univerisity of Calgary for providing us this excellent learning opportunity.
+### SPECIAL THANKS to the Electrical Engineering ILS professors and TAs team at the Univerisity of Calgary for providing us with this excellent learning opportunity.
 Once again, thank you for all your hard work and support throughout the semester
