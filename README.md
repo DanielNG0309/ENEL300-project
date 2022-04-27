@@ -48,5 +48,5 @@ Waleed Chaudhary
 
 
 
-### SPECIAL THANKS to the Electrical Engineering ILS proffesors and TAs team at the Univerisity of Calgary for providing us this excellent learning opportuinity.
+### SPECIAL THANKS to the Electrical Engineering ILS proffesors and TAs team at the Univerisity of Calgary for providing us this excellent learning opportunity.
 Once again, thank you for all your hard work and support throughout the semester
