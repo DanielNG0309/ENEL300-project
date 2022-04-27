@@ -17,6 +17,7 @@ If you wish to set the delay time to an exact value, please refer to the datashe
 Pitch Shift: Adjust samFactor variable for a pitch shift effect. 1 would yield the same frequency as your input voice, while 0.5 would yield 1/2 the frequency and 2 would yield double the frequency. For the harmonizer effect, samFactor is set to 1.5 which is essentially a 5th above your input voice
 
 AVR128DB28 DATASHEET
+
 chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://ww1.microchip.com/downloads/en/DeviceDoc/AVR128DB28-32-48-64-DataSheet-DS40002247A.pdf
 For questions related to delay time specification, please go to page 92 and 498   
 For questions related to distortion, please go to page 500
