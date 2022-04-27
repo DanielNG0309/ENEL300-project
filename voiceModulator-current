@@ -1,0 +1,195 @@
+/*
+ * File:   voiceModulator-current.c
+ * Author: monsi
+ *
+ * Created on April 10, 2022, 8:35 AM
+ */
+
+
+#include <avr/io.h>
+#include <util/delay.h>
+
+#define LENGTH 4096 // This length is used to adjust delay time
+int delayBuffer[ LENGTH ];
+int readIndex=0, writeIndex=LENGTH-1;
+
+//REQUIRES: data input x and feedback gain g
+//PROMISES: return delayed data output with feedback gain = g
+void delay( int x, float g ) {
+    int data;
+    delayBuffer[ writeIndex ] = x;
+    writeIndex++;
+    if( writeIndex >= LENGTH )
+        writeIndex = 0;
+    data=x + g * delayBuffer[readIndex];
+    readIndex++;
+    if( readIndex >= LENGTH )
+        readIndex = 0;
+    DAC0.DATA = data<<6;
+}
+
+//REQUIRES: data input and a clip value cutoff
+//PROMISES: return distorted output with the clipped value at
+// max-cutoff and min+cutoff
+void distortion(int data, int cutoff){
+    int min=225;
+    int max=512;
+    if (data > (max-cutoff)){
+        data = max-cutoff;
+    }
+    if (data<(min+cutoff)){
+        data=min+cutoff;
+    }
+    
+    data=data<<6;
+    DAC0.DATA = data;
+}
+
+//Check which button is on and turn on the LED indicator
+//Return the value of the button pressed
+int buttonCheck(){
+    int ret=0;
+    if (~PORTA.IN & 0b00100000){ //If Button connected to PA5 is pressed
+            _delay_ms(100); //Wait 0.1 seconds
+            if (~PORTA.IN & 0b00100000){ //If button connected to PA5 is still pressed
+
+                PORTC.OUT |= 0b00001000; //Turns PC3 on
+                PORTC.OUT &= 0b11111000; //Turns PC0, PC1, PC2 off
+                ret=1;
+            }
+        }
+        if (~PORTA.IN & 0b00010000){ //If Button connected to PA4 is pressed
+            _delay_ms(100); //Wait 0.1 seconds
+            if (~PORTA.IN & 0b00010000){ //If button connected to PA4 is still pressed
+
+                PORTC.OUT |= 0b00000100; //Turns PC2 on
+                PORTC.OUT &= 0b11110100; //Turns PC0, PC1, PC3 off
+                ret=2;
+            }
+        }
+        if (~PORTA.IN & 0b00001000){
+            _delay_ms(100);
+            if (~PORTA.IN & 0b00001000){
+
+                PORTC.OUT |= 0b00000010; //Turns PC1 on
+                PORTC.OUT &= 0b11110010; //Turns PC0, PC2 and PC3 off
+                ret=3;
+            }
+        }
+        if (~PORTA.IN & 0b00000100){
+            _delay_ms(100);
+            if (~PORTA.IN & 0b0000100){
+
+                PORTC.OUT |= 0b00000001; //Turns PC0 on
+                PORTC.OUT &= 0b11110001; //Turns PC1, PC2 and PC3 off
+                ret=4;
+            }
+        }
+    return ret;
+}
+
+int main(void) {
+    
+    // Enable global interrupts.
+    SREG = 0b10000000;
+    
+    // Set the ADC reference level to VDD.
+    VREF.ADC0REF = 0b10000101;
+    
+    // Enable the ADC interrupt.
+    ADC0.INTCTRL = 0b00000001;
+    
+    // Select PD2 (AIN2) as the ADC input.
+    ADC0.MUXPOS = 0x02;
+
+    // Select minimum clock divide.
+    ADC0.CTRLC = 0x00;
+    
+    // Select single ended mode, 10 bit resolution and free-running modes.
+    ADC0.CTRLA = 0b00000111;
+    
+    // Start conversion.
+    ADC0.COMMAND = 0x01;
+    
+    // Set the DAC reference level to VDD.
+    VREF.DAC0REF = 0b10000101;
+    
+    //Enable the DAC
+    DAC0.CTRLA = 0b01000001;
+    
+    //Set needed variables
+    int data; 
+    unsigned int numSamples = 1024;
+    int pitchBuffer [numSamples];
+    unsigned int indexWrite=0,indexRead=0;
+    //fakeIndex is a place holder for indexRead 
+    float fakeIndex=0;
+    //samFactor control the increment speed of indexRead
+    float samFactor;
+    
+    PORTA.DIRCLR = 0b00111100;
+    PORTC.DIRSET = 0b00001111;
+    
+    //initialize buffers to all 0
+    for(int i =0;i<numSamples;i++){
+        pitchBuffer[i]=0;
+    }
+    for(int i=0;i<LENGTH;i++){
+        delayBuffer[i]=0;
+    }
+    
+    while (1) {
+        data = ADC0.RES << 6;
+        
+        switch (buttonCheck()){
+            //mode 1 is pass-through
+            case 1:
+                DAC0.DATA = data;
+                break;
+            //mode 2 is pitch shift down 
+            case 2:
+                samFactor=0.8;
+                pitchBuffer[indexWrite]=data;
+                indexWrite++;
+                if(!(indexWrite<numSamples))
+                    indexWrite=0;
+        
+                DAC0.DATA = pitchBuffer[indexRead];
+        
+                fakeIndex=fakeIndex+samFactor;
+                indexRead=fakeIndex;
+        
+        
+                if(!(indexRead<numSamples))
+                    indexRead=fakeIndex=0;
+                break;
+            //mode 3 is delay
+            case 3:
+                delay(data>>6,0.8);
+                break;
+            //mode 4 is pitch shift up (harmonizer)
+            case 4:
+                samFactor=1.5;
+                pitchBuffer[indexWrite]=data;
+                indexWrite++;
+                if(!(indexWrite<numSamples))
+                    indexWrite=0;
+        
+                DAC0.DATA = pitchBuffer[indexRead];
+                
+                fakeIndex=fakeIndex+samFactor;
+                indexRead=fakeIndex;
+        
+        
+                if(!(indexRead<numSamples))
+                    indexRead=fakeIndex=0;
+                break;
+            //default is set to pass through
+            default:
+                DAC0.DATA = data;
+                
+                     
+        }
+        
+    }
+}
