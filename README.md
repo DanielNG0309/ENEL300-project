@@ -4,7 +4,9 @@ ENEL300-Winter2022
 FONIMAKS
 
 CAUTION: 
+
 There are 2 files: voiceModulator-current is the current version of the FONIMAKS software while the voiceModulator-developing is the software file under development and has not been thoroughly tested. Please use the first file for all general uses.
+
 The FONIMAKS software is developed for AVR128DB28 chip with XC8 compiler, other compilers/microcontrollers might not be compatible.
 
 GENERAL INSTRUCTIONS:
@@ -18,6 +20,8 @@ Pitch Shift: Adjust samFactor variable for a pitch shift effect. 1 would yield t
 
 AVR128DB28 DATASHEET
 
-chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://ww1.microchip.com/downloads/en/DeviceDoc/AVR128DB28-32-48-64-DataSheet-DS40002247A.pdf
+https://ww1.microchip.com/downloads/en/DeviceDoc/AVR128DB28-32-48-64-DataSheet-DS40002247A.pdf
+
 For questions related to delay time specification, please go to page 92 and 498   
+
 For questions related to distortion, please go to page 500
