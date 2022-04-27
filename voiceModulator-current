@@ -5,6 +5,7 @@
  * Created on April 10, 2022, 8:35 AM
  */
 
+//Pitch shift is not made into a function because of AVR performance issues
 
 #include <avr/io.h>
 #include <util/delay.h>
