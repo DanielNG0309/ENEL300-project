@@ -9,6 +9,10 @@ FONIMAKS
 
 
 
+## Examplary Usage in Music Production
+
+https://www.youtube.com/watch?v=DJRYNr0EsIk&ab_channel=TourettesMan
+
 ### CAUTION: 
 
 There are 2 files: voiceModulator-current is the current version of the FONIMAKS software while the voiceModulator-developing is the software file under development and has not been thoroughly tested. Please use the first file for all general uses.
